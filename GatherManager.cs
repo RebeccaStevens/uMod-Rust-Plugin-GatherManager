@@ -401,18 +401,23 @@ namespace Oxide.Plugins
             arg.ReplyWith(string.Format(ModifySpeed, modifier));
             updateQuarries();
         }
-        
+
+        private void updateQuarry(MiningQuarry quarry)
+        {
+            if (quarry.IsOn() && quarry.processRate != MiningQuarryResourceTickRate)
+            {
+                quarry.CancelInvoke(quarry.ProcessResources);
+                quarry.InvokeRepeating(quarry.ProcessResources, MiningQuarryResourceTickRate, MiningQuarryResourceTickRate);
+            }
+            quarry.processRate = MiningQuarryResourceTickRate;
+        }
+
         private void updateQuarries()
         {
             var quarries = UnityEngine.Object.FindObjectsOfType<MiningQuarry>();
             foreach (var quarry in quarries)
             {
-                if (quarry.IsOn() && quarry.processRate != MiningQuarryResourceTickRate)
-                {
-                    quarry.CancelInvoke(quarry.ProcessResources);
-                    quarry.InvokeRepeating(quarry.ProcessResources, MiningQuarryResourceTickRate, MiningQuarryResourceTickRate);
-                }
-                quarry.processRate = MiningQuarryResourceTickRate;
+                updateQuarry(quarry);
             }
         }
         
@@ -603,14 +608,14 @@ namespace Oxide.Plugins
             }
         }
 
-        private void OnMiningQuarryEnabled(MiningQuarry quarry)
+        private object OnConstructionPlace(BaseEntity entity, Construction component, Construction.Target constructionTarget, BasePlayer player)
         {
-            if (quarry.IsOn() && quarry.processRate != MiningQuarryResourceTickRate)
+            if (entity is MiningQuarry)
             {
-                quarry.CancelInvoke(quarry.ProcessResources);
-                quarry.InvokeRepeating(quarry.ProcessResources, MiningQuarryResourceTickRate, MiningQuarryResourceTickRate);
+                updateQuarry(entity as MiningQuarry);
             }
-            quarry.processRate = MiningQuarryResourceTickRate;
+
+            return null;
         }
 
         private void LoadConfigValues()
