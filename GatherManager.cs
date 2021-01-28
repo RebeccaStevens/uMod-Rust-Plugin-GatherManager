@@ -124,46 +124,14 @@ namespace Oxide.Plugins
             validDispensers.Add("corpse", ResourceDispenser.GatherType.Flesh);
             validDispensers.Add("flesh", ResourceDispenser.GatherType.Flesh);
 
-            foreach (var excavator in UnityEngine.Object.FindObjectsOfType<ExcavatorArm>())
-            {
-                if (ExcavatorResourceTickRate != DefaultMiningQuarryResourceTickRate)
-                {
-                    excavator.CancelInvoke("ProcessResources");
-                    excavator.InvokeRepeating("ProcessResources", ExcavatorResourceTickRate, ExcavatorResourceTickRate);
-                }
-
-                if (ExcavatorBeltSpeedMax != DefaultExcavatorBeltSpeedMax)
-                {
-                    excavator.beltSpeedMax = ExcavatorBeltSpeedMax;
-                }
-
-                if (ExcavatorTimeForFullResources != DefaultExcavatorTimeForFullResources)
-                {
-                    excavator.timeForFullResources = ExcavatorTimeForFullResources;
-                }
-            }
+            updateQuarries();
+            updateExcavators();
         }
 
         private void Unload()
         {
-            foreach (var excavator in UnityEngine.Object.FindObjectsOfType<ExcavatorArm>())
-            {
-                if (ExcavatorResourceTickRate != DefaultMiningQuarryResourceTickRate)
-                {
-                    excavator.CancelInvoke("ProcessResources");
-                    excavator.InvokeRepeating("ProcessResources", DefaultMiningQuarryResourceTickRate, DefaultMiningQuarryResourceTickRate);
-                }
-
-                if (ExcavatorBeltSpeedMax != DefaultExcavatorBeltSpeedMax)
-                {
-                    excavator.beltSpeedMax = DefaultExcavatorBeltSpeedMax;
-                }
-
-                if (ExcavatorTimeForFullResources != DefaultExcavatorTimeForFullResources)
-                {
-                    excavator.timeForFullResources = DefaultExcavatorTimeForFullResources;
-                }
-            }
+            restoreQuarries();
+            restoreExcavators();
         }
 
         protected override void LoadDefaultConfig() => PrintWarning("New configuration file created.");
@@ -431,11 +399,34 @@ namespace Oxide.Plugins
             MiningQuarryResourceTickRate = modifier;
             SetConfigValue("Options", "MiningQuarryResourceTickRate", MiningQuarryResourceTickRate);
             arg.ReplyWith(string.Format(ModifySpeed, modifier));
+            updateQuarries();
+        }
+        
+        private void updateQuarries()
+        {
             var quarries = UnityEngine.Object.FindObjectsOfType<MiningQuarry>();
-            foreach (var quarry in quarries.Where(quarry => quarry.IsOn()))
+            foreach (var quarry in quarries)
             {
-                quarry.CancelInvoke("ProcessResources");
-                quarry.InvokeRepeating("ProcessResources", MiningQuarryResourceTickRate, MiningQuarryResourceTickRate);
+                if (quarry.IsOn() && quarry.processRate != MiningQuarryResourceTickRate)
+                {
+                    quarry.CancelInvoke(quarry.ProcessResources);
+                    quarry.InvokeRepeating(quarry.ProcessResources, MiningQuarryResourceTickRate, MiningQuarryResourceTickRate);
+                }
+                quarry.processRate = MiningQuarryResourceTickRate;
+            }
+        }
+        
+        private void restoreQuarries()
+        {
+            var quarries = UnityEngine.Object.FindObjectsOfType<MiningQuarry>();
+            foreach (var quarry in quarries)
+            {
+                if (quarry.IsOn() && quarry.processRate != DefaultMiningQuarryResourceTickRate)
+                {
+                    quarry.CancelInvoke(quarry.ProcessResources);
+                    quarry.InvokeRepeating(quarry.ProcessResources, DefaultMiningQuarryResourceTickRate, DefaultMiningQuarryResourceTickRate);
+                }
+                quarry.processRate = DefaultMiningQuarryResourceTickRate;
             }
         }
 
@@ -464,11 +455,42 @@ namespace Oxide.Plugins
             ExcavatorResourceTickRate = modifier;
             SetConfigValue("Options", "ExcavatorResourceTickRate", ExcavatorResourceTickRate);
             arg.ReplyWith(string.Format(ModifySpeed, modifier));
-            var excavators = UnityEngine.Object.FindObjectsOfType<MiningQuarry>();
-            foreach (var excavator in excavators.Where(excavator => excavator.IsOn()))
+            updateExcavators();
+        }
+        
+        private void updateExcavators()
+        {
+            var excavators = UnityEngine.Object.FindObjectsOfType<ExcavatorArm>();
+            foreach (var excavator in excavators)
             {
-                excavator.CancelInvoke("ProcessResources");
-                excavator.InvokeRepeating("ProcessResources", ExcavatorResourceTickRate, ExcavatorResourceTickRate);
+                if (excavator.IsOn() && excavator.resourceProductionTickRate != ExcavatorResourceTickRate)
+                {
+                    excavator.CancelInvoke(excavator.ProduceResources);
+                    excavator.InvokeRepeating(excavator.ProduceResources, ExcavatorResourceTickRate, ExcavatorResourceTickRate);
+                }
+                excavator.resourceProductionTickRate = ExcavatorResourceTickRate;
+
+                excavator.beltSpeedMax = ExcavatorBeltSpeedMax;
+
+                excavator.timeForFullResources = ExcavatorTimeForFullResources;
+            }
+        }
+        
+        private void restoreExcavators()
+        {
+            var excavators = UnityEngine.Object.FindObjectsOfType<ExcavatorArm>();
+            foreach (var excavator in excavators)
+            {
+                if (excavator.IsOn() && excavator.resourceProductionTickRate != DefaultExcavatorResourceTickRate)
+                {
+                    excavator.CancelInvoke(excavator.ProduceResources);
+                    excavator.InvokeRepeating(excavator.ProduceResources, DefaultExcavatorResourceTickRate, DefaultExcavatorResourceTickRate);
+                }
+                excavator.resourceProductionTickRate = DefaultExcavatorResourceTickRate;
+
+                excavator.beltSpeedMax = DefaultExcavatorBeltSpeedMax;
+
+                excavator.timeForFullResources = DefaultExcavatorTimeForFullResources;
             }
         }
 
@@ -583,9 +605,12 @@ namespace Oxide.Plugins
 
         private void OnMiningQuarryEnabled(MiningQuarry quarry)
         {
-            if (MiningQuarryResourceTickRate == DefaultMiningQuarryResourceTickRate) return;
-            quarry.CancelInvoke("ProcessResources");
-            quarry.InvokeRepeating("ProcessResources", MiningQuarryResourceTickRate, MiningQuarryResourceTickRate);
+            if (quarry.IsOn() && quarry.processRate != MiningQuarryResourceTickRate)
+            {
+                quarry.CancelInvoke(quarry.ProcessResources);
+                quarry.InvokeRepeating(quarry.ProcessResources, MiningQuarryResourceTickRate, MiningQuarryResourceTickRate);
+            }
+            quarry.processRate = MiningQuarryResourceTickRate;
         }
 
         private void LoadConfigValues()
