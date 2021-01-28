@@ -612,7 +612,10 @@ namespace Oxide.Plugins
         {
             if (entity is MiningQuarry)
             {
-                updateQuarry(entity as MiningQuarry);
+                // Update the quarry but not until the quarry is ready.
+                entity.Invoke(() => {
+                    updateQuarry(entity as MiningQuarry);
+                }, 0f);
             }
 
             return null;
